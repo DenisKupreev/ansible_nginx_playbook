@@ -8,6 +8,10 @@
   - name: Selinux off
     selinux:
       state: disabled
+  - name: Reboot
+    shell: reboot
+    async: 0
+    poll: 0
   - name: wait for host boot
     local_action:
       module: wait_for
@@ -68,7 +72,7 @@
     when: repo_git is defined
   - name: Set permission
     file: 
-      dest: /foo/bar/somedir 
+      dest: /home/web/{{domain}} 
       owner: nginx
       group: nginx
       mode: u=rwX,g=rX,o=rX 

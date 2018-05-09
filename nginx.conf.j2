@@ -117,6 +117,11 @@ http {
     # Cache settings
     fastcgi_cache_path /var/cache/fpm/{{domain}} levels=1:2 keys_zone=fcgi:32m max_size=1g;
     fastcgi_cache_key "$scheme$request_method$host$request_uri";
+    # File cache settings
+    open_file_cache          max=10000 inactive=30s;
+    open_file_cache_valid    60s;
+    open_file_cache_min_uses 2;
+    open_file_cache_errors   off;
 {% endif %}
 
     # Vhost include
