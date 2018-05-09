@@ -1,0 +1,182 @@
+---
+- hosts: nginx_01
+  become: yes
+  become_method: sudo
+  vars_files:
+    - nginx_var.yml
+  tasks:
+  # - name: Selinux off
+  #   selinux:
+  #     state: disabled
+  # - name: wait for host boot
+  #   local_action:
+  #     module: wait_for
+  #     host: "{{ ansible_ssh_host }}"
+  #     port: 22
+  #     delay: 15
+  #     timeout: 120
+  #     state: started
+  - name: Add repo NGINX
+    yum_repository:
+      name: nginx
+      baseurl: https://nginx.org/packages/centos/{{ ansible_distribution_major_version|int }}/$basearch/
+      description: NGINX Repository
+      enabled: yes
+      gpgcheck: no
+  - name: Install NGINX
+    yum:
+      name: nginx
+      state: latest
+  - name: Make sure a service is running
+    systemd:
+      state: started
+      name: nginx
+      enabled: yes
+  - name: Create directory ""
+    file:
+      path: /home/web
+      state: directory
+      owner: nginx
+      group: nginx
+      mode: 0750
+  - name: Create directory {{domain}}
+    file:
+      path: /home/web/{{domain}}
+      state: directory
+      owner: nginx
+      group: nginx
+      mode: 0755
+  - name: Install Unzip
+    yum:
+      name: unzip
+      state: present  
+    when: index_zip is defined
+  - name: Copy file
+    unarchive:
+      src: ./{{ index_zip }}
+      dest: /home/web/{{domain}}/
+    when: index_zip is defined
+  - name: Install git
+    yum:
+      name: git
+      state: present
+    when: repo_git is defined
+  - name: Clone git
+    git:
+      repo: "{{ repo_git }}"
+      dest: /home/web/{{domain}}/
+    when: repo_git is defined
+  - name: Set permission
+    file: 
+      dest: /foo/bar/somedir 
+      owner: nginx
+      group: nginx
+      mode: u=rwX,g=rX,o=rX 
+      recurse: yes  
+  - name: Set nginx.conf
+    template:
+      src: nginx.conf.j2
+      dest: /etc/nginx/nginx.conf
+      validate: "/usr/sbin/nginx -c %s -t"
+      backup: yes
+  - name: Set vhost.conf
+    template:
+      src: vhost.conf.j2
+      dest: /etc/nginx/conf.d/{{domain}}.conf
+      validate: bash -c 'nginx -t -c /dev/stdin <<< "events {worker_connections 1;} http { include %s; }"'      
+      backup: yes
+    tags:
+      - resetvhost
+  - name: Install EPEL repo.
+    yum:
+      name: https://dl.fedoraproject.org/pub/epel/epel-release-latest-{{ ansible_distribution_major_version }}.noarch.rpm
+      state: present
+    when: phpfpm == "on"
+  - name: Import EPEL GPG key.
+    rpm_key:
+      key: /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-{{ ansible_distribution_major_version }}
+      state: present
+    when: phpfpm == "on"
+  - name: Install remi repo.
+    yum:
+      name: http://rpms.famillecollet.com/enterprise/remi-release-{{ ansible_distribution_major_version }}.rpm
+      state: present
+    when: phpfpm == "on"
+  - name: Import remi GPG key.
+    rpm_key:
+      key: http://rpms.remirepo.net/RPM-GPG-KEY-remi
+      state: present
+    when: phpfpm == "on"
+  - name: install php-fpm and its deps
+    yum: name={{item}} state=present
+    with_items:
+      - php
+      - php-fpm
+      - php-mbstring
+      - php-mcrypt
+      - php-pdo
+      - php-mysql
+      - php-xml
+      - php-gd
+      - php-bcmath 
+      - php-intl 
+      - php-dom 
+      - php-ldap 
+      - php-ioncube-loader 
+      - php-opcache 
+      - php-soap
+    when: version_php == "5.4"
+  - name: install php-fpm and its deps
+    yum: enablerepo=remi,remi-php56 name={{item}} state=present
+    with_items:
+      - php
+      - php-fpm
+      - php-mbstring
+      - php-mcrypt
+      - php-pdo
+      - php-mysql
+      - php-xml
+      - php-gd
+      - php-bcmath 
+      - php-intl 
+      - php-dom 
+      - php-ldap 
+      - php-ioncube-loader 
+      - php-opcache 
+      - php-soap
+    when: version_php == "5.6"
+  - name: install php-fpm and its deps
+    yum: enablerepo=remi,remi-php72 name={{item}} state=present
+    with_items:
+      - php
+      - php-fpm
+      - php-mbstring
+      - php-mcrypt
+      - php-pdo
+      - php-mysql
+      - php-gd
+      - php-bcmath 
+      - php-intl 
+      - php-xml 
+      - php-dom 
+      - php-ldap 
+      - php-ioncube-loader 
+      - php-opcache 
+      - php-soap
+    when: version_php == "7.2"
+  - name: Set php-fpm.conf
+    template:
+      src: www.conf.j2
+      dest: /etc/php-fpm.d/www.conf
+    tags: conf_phpfpm
+  - name: Restart PHP-FPM
+    systemd:
+      state: restarted
+      name: php-fpm
+  - name: Restart NGINX
+    systemd:
+      state: restarted
+      name: nginx
+    tags:
+      - resetvhost
+

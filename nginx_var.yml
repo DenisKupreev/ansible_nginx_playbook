@@ -1,0 +1,25 @@
+---
+# index_zip: index.zip 
+repo_git: https://github.com/DenisKupreev/testpagephp.git
+domain: kaktys.pp.ua
+server_listen: "10.164.0.2"
+server_name: "kaktys.pp.ua www.kaktys.pp.ua"
+index: "index.php"
+####Use proxy_pass
+# proxy_pass: "10.0.10.2"
+# proxy_pass_port: "8080"
+# proxy_pass_cache: "on"
+####PHPFPM 5.4 5.6 7.2
+phpfpm: "on"
+version_php: "5.6"
+fastcgi_pass: "127.0.0.1"
+fastcgi_pass_port: "9000"
+fastcgi_pass_cache: "on"
+####Use SSL
+# use_ssl: ""
+# port_ssl: "443"
+# ssl_pem: ""
+# ssl_key: ""
+
+
+

@@ -1,0 +1,93 @@
+{% if use_ssl is defined %}
+server {
+    listen       {{ server_listen }}:80;
+    server_name  {{ server_name }};
+#HTTP-->HTTPS  
+    return 301 https://{{domain}}$request_uri;
+}
+{% endif %}
+server {
+    listen       {{ server_listen }}:{{ port_ssl | default('80') }};
+    server_name  {{ server_name }};
+{% if phpfpm is defined %}
+    root /home/web/{{domain}};
+    access_log  /var/log/nginx/{{domain}}.access.log  combined;
+    error_log   /var/log/nginx/{{domain}}.error.log  error;
+{% endif %}
+
+{% if use_ssl is defined %}
+    ssl         on;
+    ssl_certificate      {{ssl_pem}};
+    ssl_certificate_key  {{ssl_key}};
+{% endif %}
+    location / {
+
+{% if phpfpm is defined %}
+        index       {{index}};
+#PHP-FPM setting
+        location ~* ^.+\.(jpeg|jpg|png|gif|bmp|ico|svg|tif|tiff|css|js|htm|html|ttf|otf|webp|woff|txt|csv|rtf|doc|docx|xls|xlsx|ppt|pptx|odf|odp|ods|odt|pdf|psd|ai|eot|eps|ps|zip|tar|tgz|gz|rar|bz2|7z|aac|m4a|mp3|mp4|ogg|wav|wma|3gp|avi|flv|m4v|mkv|mov|mpeg|mpg|wmv|exe|iso|dmg|swf)$ {
+            expires     max;
+        }
+        location ~ [^/]\.php(/|$) {
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            if (!-f $document_root$fastcgi_script_name) {
+                return  404;
+            }
+
+            fastcgi_pass    {{fastcgi_pass}}:{{fastcgi_pass_port}};
+            fastcgi_index   index.php;
+            include         /etc/nginx/fastcgi_params;
+{% if fastcgi_pass_cache is defined %}
+            # Cache settings
+            fastcgi_cache fcgi;
+            fastcgi_cache_valid 200 60m;
+{% endif %}
+
+        }
+{% endif %}
+
+{% if proxy_pass is defined %}
+#Proxy_pass setting
+{% if proxy_pass_cache is defined %}
+    if ($http_cookie ~* ".+" ) {
+            set $no_cache 1;
+    }
+    proxy_cache_bypass $no_cache;
+    proxy_cache all;
+    proxy_cache_valid 404 502 503 1m;
+    proxy_cache_valid any 1h;
+{% endif %}
+        proxy_pass      http://{{proxy_pass}}:{{proxy_pass_port}};
+        location ~* ^.+\.(jpeg|jpg|png|gif|bmp|ico|svg|tif|tiff|css|js|htm|html|ttf|otf|webp|woff|txt|csv|rtf|doc|docx|xls|xlsx|ppt|pptx|odf|odp|ods|odt|pdf|psd|ai|eot|eps|ps|zip|tar|tgz|gz|rar|bz2|7z|aac|m4a|mp3|mp4|ogg|wav|wma|3gp|avi|flv|m4v|mkv|mov|mpeg|mpg|wmv|exe|iso|dmg|swf)$ {
+            root /home/web/{{domain}};
+            access_log  /var/log/nginx/{{domain}}.access.log  combined;
+            error_log   /var/log/nginx/{{domain}}.error.log  error;
+            expires        max;
+            try_files      $uri @fallback;
+        }
+{% endif %}
+
+#Security setting
+        location ~* "/\.(htaccess|htpasswd)$" {
+            deny    all;
+            return  404;
+        }
+            location ~ /\.ht    {return 404;}
+        location ~ /\.svn/  {return 404;}
+        location ~ /\.git/  {return 404;}
+        location ~ /\.hg/   {return 404;}
+        location ~ /\.bzr/  {return 404;}
+
+#Error_page
+        error_page  403 /error/404.html;
+        error_page  404 /error/404.html;
+        error_page  500 502 503 504 /error/50x.html;
+
+    }
+{% if proxy_pass is defined %}
+    location @fallback {
+    proxy_pass     http://{{proxy_pass}}:{{proxy_pass_port}};
+}
+{% endif %}
+}
+
