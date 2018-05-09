@@ -1,6 +1,7 @@
 ### Install nginx with proxy_pass or fastcgi + php-fpm (5.4,5.6,7.2) on CentOS 7
 
 In file nginx var can choose install option
+
 Option source
 ```YAML
 ---
