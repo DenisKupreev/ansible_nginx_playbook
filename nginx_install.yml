@@ -5,17 +5,17 @@
   vars_files:
     - nginx_var.yml
   tasks:
-  # - name: Selinux off
-  #   selinux:
-  #     state: disabled
-  # - name: wait for host boot
-  #   local_action:
-  #     module: wait_for
-  #     host: "{{ ansible_ssh_host }}"
-  #     port: 22
-  #     delay: 15
-  #     timeout: 120
-  #     state: started
+  - name: Selinux off
+    selinux:
+      state: disabled
+  - name: wait for host boot
+    local_action:
+      module: wait_for
+      host: "{{ ansible_ssh_host }}"
+      port: 22
+      delay: 15
+      timeout: 120
+      state: started
   - name: Add repo NGINX
     yum_repository:
       name: nginx
